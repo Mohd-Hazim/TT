@@ -27,10 +27,13 @@ export default function SignupPage() {
       const res = await signup(form);
 
       if (res.success) {
-        toast.success("OTP sent to your mobile number");
-
-        // Correct redirect: backend OTP works by mobile
-        navigate(`/otp?mobile=${form.mobile}`);
+        toast.success("Account created successfully!");
+        
+        // ⭐ DEVELOPMENT: Skip OTP and go directly to login
+        // In production, uncomment the line below:
+        // navigate(`/otp?mobile=${form.mobile}`);
+        
+        navigate("/login");
       }
     } catch (err) {
       toast.error(err.message || "Signup failed");

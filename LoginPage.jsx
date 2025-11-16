@@ -7,7 +7,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    mobile: "",
+    name: "",
     password: "",
   });
 
@@ -78,12 +78,21 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm mt-4">
-          Don't have an account?{" "}
-          <Link to="/signup" className="text-purple-700 font-semibold hover:underline">
-            Sign up
+        <div className="mt-4 text-center space-y-2">
+          <Link 
+            to="/forgot-password" 
+            className="text-sm text-purple-600 hover:underline block"
+          >
+            Forgot Password?
           </Link>
-        </p>
+          
+          <p className="text-sm">
+            Don't have an account?{" "}
+            <Link to="/signup" className="text-purple-700 font-semibold hover:underline">
+              Sign up
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
