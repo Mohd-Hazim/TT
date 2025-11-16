@@ -1,0 +1,4 @@
+{
+  "name": "Smart Calendar AI Assistant",
+  "description": "A smart weekly calendar application that allows users to manage their schedule with enhanced functionalities. Users can click on events to edit or delete them, use natural language to quickly add single events, and intelligently merge AI-generated schedules with their existing calendar. Powered by the Gemini API."
+}

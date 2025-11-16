@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-50 text-gray-800;
+  font-family: 'Inter', sans-serif;
+}
+
+button {
+  @apply transition-all hover:opacity-90;
+}
+
+button:disabled {
+  @apply opacity-70 cursor-not-allowed;
+}
+
+/* Remove default black outline and replace with subtle glow */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #c084fc55; /* soft purple glow */
+  border-color: #a855f7; /* Tailwind purple-500 */
+}
+
+/* --- Calendar Enhancements --- */
+
+/* Improve visibility of weekday headers */
+#calendar-content .grid div {
+  color: #374151; /* Tailwind gray-700 */
+  opacity: 1 !important;
+}
+
+#calendar-content .grid div:hover {
+  color: #111827; /* Tailwind gray-900 */
+}
+
+/* Maintain clean white header background */
+#calendar-content .grid.grid-cols-\[auto_repeat\(7,1fr\)\].sticky {
+  background-color: #ffffff !important;
+}
+
+/* Light borders for clean layout */
+#calendar-content .border-b {
+  border-color: #e5e7eb !important; /* gray-200 */
+}
+
+#calendar-content .border-l {
+  border-color: #f1f5f9 !important; /* gray-100 */
+}
