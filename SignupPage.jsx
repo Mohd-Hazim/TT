@@ -23,17 +23,19 @@ export default function SignupPage() {
       return toast.error("All fields are required");
     }
 
+    // Basic mobile validation (10 digits)
+    if (!/^\d{10}$/.test(form.mobile.trim())) {
+      return toast.error("Please enter a valid 10-digit mobile number");
+    }
+
     try {
       const res = await signup(form);
 
       if (res.success) {
-        toast.success("Account created successfully!");
+        toast.success("Account created! Verify OTP to continue.");
         
-        // ⭐ DEVELOPMENT: Skip OTP and go directly to login
-        // In production, uncomment the line below:
-        // navigate(`/otp?mobile=${form.mobile}`);
-        
-        navigate("/login");
+        // ⭐ Redirect to OTP verification page
+        navigate(`/otp?mobile=${form.mobile}`);
       }
     } catch (err) {
       toast.error(err.message || "Signup failed");
@@ -51,14 +53,17 @@ export default function SignupPage() {
 
           {/* MOBILE */}
           <div>
-            <label className="block text-sm font-medium mb-1">Mobile Number</label>
+            <label className="block text-sm font-medium mb-1">
+              Mobile Number
+            </label>
             <input
-              type="text"
+              type="tel"
               name="mobile"
               value={form.mobile}
               onChange={handleChange}
               className="w-full px-3 py-2 rounded-lg border focus:ring-purple-400 focus:ring-2 outline-none"
-              placeholder="Enter mobile number"
+              placeholder="Enter 10-digit mobile number"
+              maxLength="10"
             />
           </div>
 
@@ -84,7 +89,8 @@ export default function SignupPage() {
               value={form.password}
               onChange={handleChange}
               className="w-full px-3 py-2 rounded-lg border focus:ring-purple-400 focus:ring-2 outline-none"
-              placeholder="Enter password"
+              placeholder="Enter password (min 6 characters)"
+              minLength="6"
             />
           </div>
 

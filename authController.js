@@ -1,5 +1,6 @@
 // backend/controllers/authController.js
-// DEVELOPMENT VERSION - SKIPS OTP VERIFICATION
+// ⭐ WITH PROFILE MANAGEMENT
+
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
@@ -21,25 +22,23 @@ exports.signup = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // ⭐ DEVELOPMENT: Auto-verify user (skip OTP)
     const newUser = await User.create({
       mobile,
       name,
       passwordHash,
-      isVerified: true  // Auto-verified for development
+      isVerified: false
     });
 
-    // Try to send OTP but don't fail if it errors
     try {
       await sendOTP(mobile);
-      console.log("✅ OTP sent successfully");
+      console.log("✅ OTP sent successfully to:", mobile);
     } catch (error) {
       console.warn("⚠️ OTP send failed (continuing anyway):", error.message);
     }
 
     res.status(201).json({
       success: true,
-      message: "User created successfully (auto-verified for development)",
+      message: "Account created! Please verify OTP.",
       userId: newUser._id
     });
   } catch (error) {
@@ -62,10 +61,14 @@ exports.login = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // ⭐ DEVELOPMENT: Skip verification check
-    // if (!user.isVerified) {
-    //   return res.status(403).json({ success: false, message: "Please verify your account first" });
-    // }
+    if (!user.isVerified) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Please verify your OTP first",
+        needsVerification: true,
+        mobile: user.mobile
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
@@ -85,7 +88,7 @@ exports.login = async (req, res) => {
   }
 };
 
-// --------------- GET ME ----------------
+// --------------- GET ME (Profile) ----------------
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.userId).select("-passwordHash");
@@ -94,6 +97,127 @@ exports.getMe = async (req, res) => {
     }
     res.json({ success: true, user });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// --------------- UPDATE PROFILE ----------------
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, mobile } = req.body;
+    const userId = req.userId;
+
+    const updates = {};
+
+    // Update name
+    if (name) {
+      // Check if name is already taken by another user
+      const existingName = await User.findOne({ 
+        name, 
+        _id: { $ne: userId } 
+      });
+      
+      if (existingName) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "This name is already taken" 
+        });
+      }
+      
+      updates.name = name.trim();
+    }
+
+    // Update mobile (must be verified via OTP)
+    if (mobile) {
+      // Check if mobile is already taken by another user
+      const existingMobile = await User.findOne({ 
+        mobile, 
+        _id: { $ne: userId } 
+      });
+      
+      if (existingMobile) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "This mobile number is already registered" 
+        });
+      }
+      
+      updates.mobile = mobile.trim();
+      // Note: OTP verification should be done before calling this endpoint
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No updates provided" 
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: updates },
+      { new: true, select: "-passwordHash" }
+    );
+
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// --------------- UPDATE PASSWORD ----------------
+exports.updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.userId;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Current and new password required" 
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "New password must be at least 6 characters" 
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Current password is incorrect" 
+      });
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await User.findByIdAndUpdate(userId, {
+      passwordHash: newPasswordHash
+    });
+
+    res.json({
+      success: true,
+      message: "Password updated successfully"
+    });
+  } catch (error) {
+    console.error("Update password error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -120,13 +244,32 @@ exports.verifyOtpHandler = async (req, res) => {
     if (!mobile || !otp)
       return res.status(400).json({ message: "Mobile & OTP required" });
 
-    // ⭐ DEVELOPMENT: Auto-verify without checking OTP
-    console.log("⚠️ DEV MODE: Skipping OTP verification");
+    console.log("🔐 Verifying OTP:", otp, "for mobile:", mobile);
     
-    // Mark user as verified
-    await User.findOneAndUpdate({ mobile }, { isVerified: true });
+    await verifyOTP(mobile, otp);
+    
+    const user = await User.findOneAndUpdate(
+      { mobile }, 
+      { isVerified: true },
+      { new: true }
+    );
 
-    res.json({ success: true, message: "OTP verified successfully (dev mode)" });
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found with this mobile number" 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "OTP verified successfully! You can now login.",
+      user: {
+        id: user._id,
+        name: user.name,
+        mobile: user.mobile
+      }
+    });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
@@ -183,10 +326,9 @@ exports.verifyResetOtp = async (req, res) => {
       return res.status(400).json({ success: false, message: "Mobile and OTP required" });
     }
 
-    // ⭐ DEVELOPMENT: Skip OTP verification
-    console.log("⚠️ DEV MODE: Skipping reset OTP verification");
+    await verifyOTP(mobile, otp);
 
-    res.json({ success: true, message: "OTP verified (dev mode)" });
+    res.json({ success: true, message: "OTP verified successfully" });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
@@ -201,8 +343,7 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: "All fields required" });
     }
 
-    // ⭐ DEVELOPMENT: Skip OTP verification
-    console.log("⚠️ DEV MODE: Skipping OTP check for password reset");
+    await verifyOTP(mobile, otp);
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await User.findOneAndUpdate({ mobile }, { passwordHash });

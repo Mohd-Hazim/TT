@@ -30,6 +30,14 @@ export default function LoginPage() {
         navigate("/"); // Redirect to calendar
       }
     } catch (err) {
+      // Check if user needs OTP verification
+      if (err.message.includes("verify your OTP")) {
+        toast.error("Please verify your OTP first");
+        // You could redirect to OTP page if you have the mobile number
+        // For now, just show the error
+        return;
+      }
+      
       toast.error(err.message || "Login failed");
     }
   };
@@ -53,6 +61,7 @@ export default function LoginPage() {
               onChange={handleChange}
               className="w-full px-3 py-2 rounded-lg border focus:ring-purple-400 focus:ring-2 outline-none"
               placeholder="Enter your name"
+              autoComplete="username"
             />
           </div>
 
@@ -66,6 +75,7 @@ export default function LoginPage() {
               onChange={handleChange}
               className="w-full px-3 py-2 rounded-lg border focus:ring-purple-400 focus:ring-2 outline-none"
               placeholder="Enter password"
+              autoComplete="current-password"
             />
           </div>
 

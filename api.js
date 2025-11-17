@@ -16,7 +16,7 @@ export function getToken() {
 
 export function logout() {
   localStorage.removeItem("token");
-  window.location.href = "/login";
+  // Don't redirect here - let the calling component handle it
 }
 
 // ================================================
@@ -44,6 +44,7 @@ async function request(path, opts = {}) {
 
     if (res.status === 401) {
       logout();
+      window.location.href = "/login";
       throw new Error("Session expired. Please login again.");
     }
 
@@ -110,6 +111,23 @@ export const verifyResetOtp = (body) =>
 export const resetPassword = (body) =>
   request(`/auth/reset-password`, {
     method: "POST",
+    body: JSON.stringify(body),
+  });
+
+// ================================================
+// 👤 PROFILE APIs
+// ================================================
+export const getUserProfile = () => request(`/auth/me`);
+
+export const updateProfile = (body) =>
+  request(`/auth/profile`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+
+export const updatePassword = (body) =>
+  request(`/auth/password`, {
+    method: "PUT",
     body: JSON.stringify(body),
   });
 
